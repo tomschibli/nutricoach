@@ -1,433 +1,435 @@
 import { useState } from "react";
-import { Card, CardContent } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
+import { Button } from "@/components/ui/button";
 import {
-  Bell, Moon, User, Droplets, Dumbbell, Lightbulb, Info, ChevronRight, Edit2, Check, Sparkles, Crown
+  Moon, Sun, Bell, User, ChevronRight, Check, Edit3,
+  Heart, Activity, Sparkles, Crown, RotateCcw, Info,
+  Droplets, Dumbbell, Lightbulb, Scale,
 } from "lucide-react";
 import { useApp, calcDailyCalories, calcMacroGoals } from "@/context/AppContext";
 import { toast } from "sonner";
-import { ProGate } from "@/components/ProGate";
+import ProModal from "@/components/ProModal";
 
-const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+const DAYS = ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"];
 
-function SectionHeader({ title }: { title: string }) {
+function SectionLabel({ children }: { children: React.ReactNode }) {
   return (
-    <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider px-1 mb-2 mt-5">
-      {title}
+    <p className="text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest px-1 mb-2 mt-6">
+      {children}
     </p>
   );
 }
 
-function SettingRow({
+function SettingsCard({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="bg-white dark:bg-zinc-900 rounded-2xl shadow-sm overflow-hidden divide-y divide-gray-100 dark:divide-zinc-800">
+      {children}
+    </div>
+  );
+}
+
+function SettingsRow({
   icon: Icon,
-  iconColor,
+  iconBg,
   label,
   desc,
   right,
   onClick,
+  danger,
 }: {
   icon: React.ElementType;
-  iconColor: string;
+  iconBg: string;
   label: string;
   desc?: string;
   right?: React.ReactNode;
   onClick?: () => void;
+  danger?: boolean;
 }) {
   return (
     <div
-      className={`flex items-center gap-3 py-3 ${onClick ? "cursor-pointer" : ""}`}
       onClick={onClick}
+      className={`flex items-center gap-3.5 px-4 py-3.5 ${onClick ? "cursor-pointer active:bg-gray-50 dark:active:bg-zinc-800 transition-colors" : ""}`}
     >
-      <div className={`w-8 h-8 rounded-xl ${iconColor} flex items-center justify-center shrink-0`}>
+      <div className={`w-9 h-9 rounded-xl ${iconBg} flex items-center justify-center shrink-0`}>
         <Icon className="h-4 w-4 text-white" />
       </div>
       <div className="flex-1 min-w-0">
-        <p className="text-sm font-medium text-gray-800 dark:text-gray-200">{label}</p>
-        {desc && <p className="text-xs text-gray-400 mt-0.5 truncate">{desc}</p>}
+        <p className={`text-sm font-semibold ${danger ? "text-red-500" : "text-gray-900 dark:text-white"}`}>
+          {label}
+        </p>
+        {desc && <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5 truncate">{desc}</p>}
       </div>
-      {right && <div className="shrink-0">{right}</div>}
-      {onClick && !right && <ChevronRight className="h-4 w-4 text-gray-300 shrink-0" />}
+      {right ?? (onClick && <ChevronRight className="h-4 w-4 text-gray-300 dark:text-zinc-600 shrink-0" />)}
     </div>
   );
 }
 
 export default function Settings() {
-  const { profile, updateProfile, notificationSettings, updateNotifications, darkMode, toggleDarkMode, isPro } = useApp();
-  const [editingGoal, setEditingGoal] = useState(false);
+  const {
+    profile, updateProfile,
+    notificationSettings, updateNotifications,
+    darkMode, toggleDarkMode,
+    isPro,
+  } = useApp();
+
+  const [showPro, setShowPro] = useState(false);
+  const [editingCals, setEditingCals] = useState(false);
   const [calorieInput, setCalorieInput] = useState(profile?.dailyCalorieGoal?.toString() ?? "");
-  const [showProGate, setShowProGate] = useState(false);
+  const [units, setUnits] = useState<"metric" | "imperial">("metric");
 
   if (!profile) return null;
-
   const notifs = notificationSettings;
 
-  const requestNotifPermission = async () => {
-    if (!("Notification" in window)) {
-      toast.error("Notifications not supported in this browser");
-      return false;
-    }
-    const perm = await Notification.requestPermission();
-    return perm === "granted";
+  const saveCalorieGoal = () => {
+    const v = parseInt(calorieInput);
+    if (!v || v < 800 || v > 10000) { toast.error("800–10000 kcal eingeben"); return; }
+    const macros = calcMacroGoals(v, profile.weight, profile.goal);
+    updateProfile({ ...profile, dailyCalorieGoal: v, macroGoals: macros });
+    setEditingCals(false);
+    toast.success("Kalorienziel gespeichert!");
+  };
+
+  const recalc = () => {
+    const cal = calcDailyCalories(profile);
+    const macros = calcMacroGoals(cal, profile.weight, profile.goal);
+    updateProfile({ ...profile, dailyCalorieGoal: cal, macroGoals: macros });
+    setCalorieInput(cal.toString());
+    toast.success("Ziele neu berechnet 🎯");
+  };
+
+  const requestNotif = async () => {
+    if (!("Notification" in window)) { toast.error("Benachrichtigungen nicht unterstützt"); return false; }
+    const p = await Notification.requestPermission();
+    return p === "granted";
   };
 
   const toggleMaster = async () => {
     if (!notifs.masterEnabled) {
-      const granted = await requestNotifPermission();
-      if (!granted) { toast.error("Notification permission denied"); return; }
-      toast.success("Notifications enabled! ✅");
+      const ok = await requestNotif();
+      if (!ok) { toast.error("Zugriff verweigert"); return; }
     }
     updateNotifications({ ...notifs, masterEnabled: !notifs.masterEnabled });
   };
 
-  const saveCalorieGoal = () => {
-    const v = parseInt(calorieInput);
-    if (!v || v < 800 || v > 10000) { toast.error("Enter a value between 800–10000 kcal"); return; }
-    const macros = calcMacroGoals(v, profile.weight, profile.goal);
-    updateProfile({ ...profile, dailyCalorieGoal: v, macroGoals: macros });
-    setEditingGoal(false);
-    toast.success("Calorie goal updated!");
-  };
-
-  const recalcGoals = () => {
-    const calories = calcDailyCalories(profile);
-    const macros = calcMacroGoals(calories, profile.weight, profile.goal);
-    updateProfile({ ...profile, dailyCalorieGoal: calories, macroGoals: macros });
-    setCalorieInput(calories.toString());
-    toast.success("Goals recalculated! 🎯");
-  };
-
   const goalLabel: Record<string, string> = {
-    lose_weight: "Lose Weight",
-    maintain: "Maintain",
-    gain_muscle: "Build Muscle",
-    improve_health: "Eat Healthier",
+    lose_weight: "Abnehmen", maintain: "Gewicht halten",
+    gain_muscle: "Muskelaufbau", improve_health: "Gesünder essen",
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-zinc-950 pb-28">
-      {showProGate && <ProGate feature="Pro" description="Schalte alle Features frei." onClose={() => setShowProGate(false)} />}
-      <div className="max-w-[430px] mx-auto">
+    <div className="min-h-screen bg-gray-50 dark:bg-zinc-950 pb-32">
+      {showPro && <ProModal onClose={() => setShowPro(false)} />}
+
+      <div className="max-w-[430px] mx-auto px-4">
+
         {/* Header */}
-        <div className="px-4 pt-12 pb-4">
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Einstellungen</h1>
+        <div className="pt-14 pb-2">
+          <h1 className="text-2xl font-black text-gray-900 dark:text-white tracking-tight">Einstellungen</h1>
         </div>
 
-        {/* Pro Banner */}
-        {!isPro && (
-          <div className="px-4 mb-2">
-            <button
-              onClick={() => setShowProGate(true)}
-              className="w-full rounded-2xl bg-gradient-to-r from-violet-500 to-purple-600 p-4 flex items-center gap-3 shadow-lg shadow-violet-500/20 transition-all active:scale-[0.98]"
-            >
-              <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center shrink-0">
-                <Crown className="h-5 w-5 text-white" />
-              </div>
-              <div className="flex-1 text-left">
-                <p className="text-sm font-bold text-white">CedricCoach Pro</p>
-                <p className="text-xs text-white/70">Alle Features · CHF 9.99 einmalig</p>
-              </div>
-              <ChevronRight className="h-4 w-4 text-white/60 shrink-0" />
-            </button>
+        {/* ── ACCOUNT ─────────────────────────────── */}
+        <SectionLabel>Account</SectionLabel>
+        <SettingsCard>
+          {/* Avatar + Profile */}
+          <div className="px-4 py-4 flex items-center gap-4">
+            <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center text-xl font-black text-white shadow-md shadow-violet-500/20 shrink-0">
+              {profile.name[0].toUpperCase()}
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-base font-bold text-gray-900 dark:text-white truncate">{profile.name}</p>
+              <p className="text-xs text-gray-400 mt-0.5">
+                {profile.age} J · {profile.weight} kg · {profile.height} cm
+              </p>
+              <span className="inline-block mt-1.5 text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400">
+                {goalLabel[profile.goal] ?? profile.goal}
+              </span>
+            </div>
           </div>
-        )}
-        {isPro && (
-          <div className="px-4 mb-2">
-            <div className="w-full rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-600 p-4 flex items-center gap-3 shadow-lg shadow-emerald-500/20">
-              <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center shrink-0">
+
+          {/* Calorie goal */}
+          <div className="px-4 py-3.5">
+            <div className="flex items-center justify-between mb-2">
+              <p className="text-sm font-semibold text-gray-900 dark:text-white">Tägliches Kalorienziel</p>
+              <button
+                onClick={() => { setEditingCals(!editingCals); setCalorieInput(profile.dailyCalorieGoal.toString()); }}
+                className="text-xs font-bold text-violet-600 dark:text-violet-400"
+              >
+                {editingCals ? "Abbrechen" : "Bearbeiten"}
+              </button>
+            </div>
+            {editingCals ? (
+              <div className="flex gap-2">
+                <Input type="number" value={calorieInput} onChange={(e) => setCalorieInput(e.target.value)}
+                  className="h-10 rounded-xl text-sm flex-1" placeholder="z.B. 1800" />
+                <Button onClick={saveCalorieGoal} size="sm" className="h-10 px-4 rounded-xl bg-violet-600 hover:bg-violet-700">
+                  <Check className="h-4 w-4" />
+                </Button>
+              </div>
+            ) : (
+              <div className="flex items-end justify-between">
+                <p className="text-3xl font-black text-violet-600 dark:text-violet-400">
+                  {profile.dailyCalorieGoal}
+                  <span className="text-sm font-normal text-gray-400 ml-1">kcal</span>
+                </p>
+                <button onClick={recalc} className="flex items-center gap-1 text-xs text-gray-400 hover:text-gray-600 transition-colors">
+                  <RotateCcw className="h-3 w-3" /> Neu berechnen
+                </button>
+              </div>
+            )}
+
+            {/* Macros */}
+            <div className="grid grid-cols-3 gap-2 mt-3">
+              {[
+                { label: "Protein", value: profile.macroGoals.protein, color: "text-blue-600 dark:text-blue-400", bg: "bg-blue-50 dark:bg-blue-900/20" },
+                { label: "Kohlenhydrate", value: profile.macroGoals.carbs, color: "text-amber-600 dark:text-amber-400", bg: "bg-amber-50 dark:bg-amber-900/20" },
+                { label: "Fett", value: profile.macroGoals.fat, color: "text-pink-600 dark:text-pink-400", bg: "bg-pink-50 dark:bg-pink-900/20" },
+              ].map(({ label, value, color, bg }) => (
+                <div key={label} className={`${bg} rounded-xl py-2.5 text-center`}>
+                  <p className={`text-base font-black ${color}`}>{value}g</p>
+                  <p className="text-[10px] text-gray-400 mt-0.5">{label}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <SettingsRow
+            icon={Edit3}
+            iconBg="bg-blue-500"
+            label="Masse neu eintragen"
+            desc="Zurück zur Umfrage — Daten bleiben erhalten"
+            onClick={() => {
+              if (confirm("Masse wirklich neu eintragen?")) {
+                const s = localStorage.getItem("nc_profile");
+                if (s) localStorage.setItem("nc_profile", JSON.stringify({ ...JSON.parse(s), setupComplete: false }));
+                window.location.reload();
+              }
+            }}
+          />
+        </SettingsCard>
+
+        {/* ── APP PREFERENCES ─────────────────────── */}
+        <SectionLabel>App Einstellungen</SectionLabel>
+        <SettingsCard>
+          <SettingsRow
+            icon={darkMode ? Moon : Sun}
+            iconBg={darkMode ? "bg-indigo-500" : "bg-amber-400"}
+            label="Erscheinungsbild"
+            desc={darkMode ? "Dunkles Design" : "Helles Design"}
+            right={
+              <Switch
+                checked={darkMode}
+                onCheckedChange={toggleDarkMode}
+                className="data-[state=checked]:bg-indigo-500"
+              />
+            }
+          />
+          <div className="flex items-center gap-3.5 px-4 py-3.5">
+            <div className="w-9 h-9 rounded-xl bg-emerald-500 flex items-center justify-center shrink-0">
+              <Scale className="h-4 w-4 text-white" />
+            </div>
+            <div className="flex-1">
+              <p className="text-sm font-semibold text-gray-900 dark:text-white">Einheitensystem</p>
+              <p className="text-xs text-gray-400 mt-0.5">{units === "metric" ? "Metrisch (kg, cm)" : "Imperial (lbs, ft)"}</p>
+            </div>
+            <div className="flex bg-gray-100 dark:bg-zinc-800 rounded-xl p-1">
+              {(["metric", "imperial"] as const).map((u) => (
+                <button
+                  key={u}
+                  onClick={() => setUnits(u)}
+                  className={`px-3 py-1 text-xs font-bold rounded-lg transition-all duration-150 ${
+                    units === u
+                      ? "bg-white dark:bg-zinc-700 text-gray-900 dark:text-white shadow-sm"
+                      : "text-gray-500 dark:text-gray-400"
+                  }`}
+                >
+                  {u === "metric" ? "Metrisch" : "Imperial"}
+                </button>
+              ))}
+            </div>
+          </div>
+        </SettingsCard>
+
+        {/* ── INTEGRATIONS ────────────────────────── */}
+        <SectionLabel>Integrationen</SectionLabel>
+        <SettingsCard>
+          <SettingsRow
+            icon={Heart}
+            iconBg="bg-red-500"
+            label="Apple Health"
+            desc="Schritte & Aktivität synchronisieren"
+            right={<Switch disabled className="opacity-50" />}
+          />
+          <SettingsRow
+            icon={Activity}
+            iconBg="bg-green-500"
+            label="Google Fit"
+            desc="Workout-Daten synchronisieren"
+            right={<Switch disabled className="opacity-50" />}
+          />
+          <div className="px-4 pb-3 pt-1">
+            <p className="text-xs text-gray-400">Integrationen werden in einer zukünftigen Version verfügbar sein.</p>
+          </div>
+        </SettingsCard>
+
+        {/* ── NOTIFICATIONS ───────────────────────── */}
+        <SectionLabel>Benachrichtigungen</SectionLabel>
+        <SettingsCard>
+          <SettingsRow
+            icon={Bell}
+            iconBg="bg-blue-500"
+            label="Benachrichtigungen"
+            desc={notifs.masterEnabled ? "Aktiv" : "Deaktiviert"}
+            right={<Switch checked={notifs.masterEnabled} onCheckedChange={toggleMaster} />}
+          />
+          {notifs.masterEnabled && (
+            <>
+              <SettingsRow
+                icon={Bell}
+                iconBg="bg-orange-400"
+                label="Mahlzeiten-Erinnerungen"
+                desc={notifs.mealReminders.enabled
+                  ? `${notifs.mealReminders.breakfast} · ${notifs.mealReminders.lunch} · ${notifs.mealReminders.dinner}`
+                  : "Aus"}
+                right={
+                  <Switch
+                    checked={notifs.mealReminders.enabled}
+                    onCheckedChange={(v) => updateNotifications({ ...notifs, mealReminders: { ...notifs.mealReminders, enabled: v } })}
+                  />
+                }
+              />
+              {notifs.mealReminders.enabled && (
+                <div className="px-4 pb-3 pt-1 grid grid-cols-3 gap-2 ml-[52px]">
+                  {(["breakfast", "lunch", "dinner"] as const).map((m) => (
+                    <div key={m}>
+                      <p className="text-[10px] text-gray-400 capitalize mb-1">
+                        {m === "breakfast" ? "Frühstück" : m === "lunch" ? "Mittagessen" : "Abendessen"}
+                      </p>
+                      <Input type="time" value={notifs.mealReminders[m]}
+                        onChange={(e) => updateNotifications({ ...notifs, mealReminders: { ...notifs.mealReminders, [m]: e.target.value } })}
+                        className="h-8 text-xs rounded-lg" />
+                    </div>
+                  ))}
+                </div>
+              )}
+              <SettingsRow
+                icon={Droplets}
+                iconBg="bg-cyan-500"
+                label="Hydration-Erinnerungen"
+                desc={notifs.hydrationAlerts.enabled ? `Alle ${notifs.hydrationAlerts.intervalHours}h` : "Aus"}
+                right={
+                  <Switch
+                    checked={notifs.hydrationAlerts.enabled}
+                    onCheckedChange={(v) => updateNotifications({ ...notifs, hydrationAlerts: { ...notifs.hydrationAlerts, enabled: v } })}
+                  />
+                }
+              />
+              <SettingsRow
+                icon={Dumbbell}
+                iconBg="bg-purple-500"
+                label="Workout-Erinnerungen"
+                desc={notifs.workoutReminders.enabled
+                  ? `${notifs.workoutReminders.days.join(", ")} · ${notifs.workoutReminders.time}`
+                  : "Aus"}
+                right={
+                  <Switch
+                    checked={notifs.workoutReminders.enabled}
+                    onCheckedChange={(v) => updateNotifications({ ...notifs, workoutReminders: { ...notifs.workoutReminders, enabled: v } })}
+                  />
+                }
+              />
+              {notifs.workoutReminders.enabled && (
+                <div className="px-4 pb-3 pt-1 ml-[52px] space-y-2">
+                  <div className="flex flex-wrap gap-1.5">
+                    {DAYS.map((d) => (
+                      <button key={d}
+                        onClick={() => {
+                          const days = notifs.workoutReminders.days.includes(d)
+                            ? notifs.workoutReminders.days.filter((x) => x !== d)
+                            : [...notifs.workoutReminders.days, d];
+                          updateNotifications({ ...notifs, workoutReminders: { ...notifs.workoutReminders, days } });
+                        }}
+                        className={`text-xs px-2.5 py-1 rounded-lg font-semibold border transition-all ${
+                          notifs.workoutReminders.days.includes(d)
+                            ? "bg-purple-500 text-white border-purple-500"
+                            : "border-gray-200 dark:border-zinc-700 text-gray-500 dark:text-gray-400"
+                        }`}
+                      >{d}</button>
+                    ))}
+                  </div>
+                  <Input type="time" value={notifs.workoutReminders.time}
+                    onChange={(e) => updateNotifications({ ...notifs, workoutReminders: { ...notifs.workoutReminders, time: e.target.value } })}
+                    className="h-8 text-xs rounded-lg w-28" />
+                </div>
+              )}
+              <SettingsRow
+                icon={Lightbulb}
+                iconBg="bg-yellow-400"
+                label="Tägliche Coach-Tipps"
+                desc="Personalisierte KI-Ratschläge"
+                right={
+                  <Switch
+                    checked={notifs.coachingTips.enabled}
+                    onCheckedChange={(v) => updateNotifications({ ...notifs, coachingTips: { enabled: v } })}
+                  />
+                }
+              />
+            </>
+          )}
+        </SettingsCard>
+
+        {/* ── PREMIUM ─────────────────────────────── */}
+        <SectionLabel>Premium</SectionLabel>
+
+        {isPro ? (
+          <div className="relative overflow-hidden rounded-2xl p-5 bg-gradient-to-r from-emerald-500 to-teal-500 shadow-lg shadow-emerald-500/20">
+            <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -translate-y-1/2 translate-x-1/2" />
+            <div className="flex items-center gap-3 relative">
+              <div className="w-11 h-11 rounded-xl bg-white/20 flex items-center justify-center shrink-0">
                 <Sparkles className="h-5 w-5 text-white" />
               </div>
               <div>
-                <p className="text-sm font-bold text-white">Pro aktiv ✓</p>
+                <p className="text-base font-bold text-white">Pro aktiv ✓</p>
                 <p className="text-xs text-white/70">Alle Features freigeschaltet</p>
               </div>
             </div>
           </div>
+        ) : (
+          <button
+            onClick={() => setShowPro(true)}
+            className="relative w-full overflow-hidden rounded-2xl p-5 text-left shadow-lg shadow-violet-500/20 transition-all active:scale-[0.98]"
+            style={{ background: "linear-gradient(135deg, #7c3aed 0%, #a855f7 60%, #6366f1 100%)" }}
+          >
+            <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -translate-y-1/2 translate-x-1/2" />
+            <div className="flex items-center gap-3 relative">
+              <div className="w-11 h-11 rounded-xl bg-white/20 flex items-center justify-center shrink-0">
+                <Crown className="h-5 w-5 text-white" />
+              </div>
+              <div className="flex-1">
+                <p className="text-base font-bold text-white">CedricCoach Pro</p>
+                <p className="text-xs text-white/70">Food Scanner · Unlimited Chat · Analytics</p>
+              </div>
+              <div className="shrink-0 bg-white/20 rounded-xl px-3 py-1.5">
+                <p className="text-xs font-black text-white">CHF 9.99</p>
+              </div>
+            </div>
+          </button>
         )}
 
-        {/* Profile Card */}
-        <div className="px-4">
-          <Card className="rounded-3xl border-0 shadow-sm bg-white dark:bg-zinc-900">
-            <CardContent className="p-4">
-              <div className="flex items-center gap-4">
-                <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-emerald-400 to-teal-600 flex items-center justify-center text-2xl font-bold text-white shadow-md">
-                  {profile.name[0].toUpperCase()}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-base font-bold text-gray-900 dark:text-white">{profile.name}</p>
-                  <p className="text-xs text-gray-500 mt-0.5">
-                    {profile.age}y · {profile.weight}kg · {profile.height}cm
-                  </p>
-                  <Badge className="mt-1.5 text-[10px] bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 border-0">
-                    {goalLabel[profile.goal] ?? profile.goal}
-                  </Badge>
-                </div>
-                <button
-                  className="w-8 h-8 rounded-xl bg-gray-100 dark:bg-zinc-800 flex items-center justify-center"
-                  onClick={recalcGoals}
-                >
-                  <Edit2 className="h-3.5 w-3.5 text-gray-500" />
-                </button>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
+        {/* ── ABOUT ───────────────────────────────── */}
+        <SectionLabel>Über die App</SectionLabel>
+        <SettingsCard>
+          <SettingsRow
+            icon={Info}
+            iconBg="bg-gray-400"
+            label="CedricCoach"
+            desc="Version 1.0 · Powered by Claude AI"
+          />
+        </SettingsCard>
 
-        {/* Goals */}
-        <div className="px-4">
-          <SectionHeader title="Nutrition Goals" />
-          <Card className="rounded-2xl border-0 shadow-sm bg-white dark:bg-zinc-900">
-            <CardContent className="p-4 space-y-3">
-              <div>
-                <div className="flex justify-between items-center mb-1.5">
-                  <p className="text-sm font-medium text-gray-700 dark:text-gray-300">Daily Calorie Goal</p>
-                  <button
-                    onClick={() => { setEditingGoal(!editingGoal); setCalorieInput(profile.dailyCalorieGoal.toString()); }}
-                    className="text-xs text-emerald-600 dark:text-emerald-400 font-medium"
-                  >
-                    {editingGoal ? "Cancel" : "Edit"}
-                  </button>
-                </div>
-                {editingGoal ? (
-                  <div className="flex gap-2">
-                    <Input
-                      type="number"
-                      value={calorieInput}
-                      onChange={(e) => setCalorieInput(e.target.value)}
-                      className="h-9 text-sm"
-                      placeholder="e.g. 1800"
-                    />
-                    <Button size="sm" className="h-9 bg-emerald-500 hover:bg-emerald-600" onClick={saveCalorieGoal}>
-                      <Check className="h-4 w-4" />
-                    </Button>
-                  </div>
-                ) : (
-                  <p className="text-2xl font-black text-emerald-500">{profile.dailyCalorieGoal} <span className="text-sm font-normal text-gray-400">kcal</span></p>
-                )}
-              </div>
-              <Separator />
-              <div className="grid grid-cols-3 gap-3 text-center">
-                {[
-                  { label: "Protein", value: profile.macroGoals.protein, color: "text-blue-500" },
-                  { label: "Carbs", value: profile.macroGoals.carbs, color: "text-amber-500" },
-                  { label: "Fat", value: profile.macroGoals.fat, color: "text-pink-500" },
-                ].map(({ label, value, color }) => (
-                  <div key={label} className="bg-gray-50 dark:bg-zinc-800 rounded-xl py-2">
-                    <p className={`text-lg font-black ${color}`}>{value}g</p>
-                    <p className="text-[11px] text-gray-400">{label}</p>
-                  </div>
-                ))}
-              </div>
-              <Button
-                variant="outline"
-                size="sm"
-                className="w-full text-xs"
-                onClick={recalcGoals}
-              >
-                Recalculate from profile
-              </Button>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Dietary Preferences */}
-        <div className="px-4">
-          <SectionHeader title="Dietary Profile" />
-          <Card className="rounded-2xl border-0 shadow-sm bg-white dark:bg-zinc-900">
-            <CardContent className="p-4 space-y-3">
-              {profile.dietaryPreferences.length > 0 && (
-                <div>
-                  <p className="text-xs text-gray-500 mb-1.5">Diet preferences</p>
-                  <div className="flex flex-wrap gap-1.5">
-                    {profile.dietaryPreferences.map((d) => (
-                      <Badge key={d} className="text-xs bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 border-0">{d}</Badge>
-                    ))}
-                  </div>
-                </div>
-              )}
-              {profile.allergies.length > 0 && (
-                <div>
-                  <p className="text-xs text-gray-500 mb-1.5">Allergies</p>
-                  <div className="flex flex-wrap gap-1.5">
-                    {profile.allergies.map((a) => (
-                      <Badge key={a} className="text-xs bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 border-0">{a}</Badge>
-                    ))}
-                  </div>
-                </div>
-              )}
-              {profile.dietaryPreferences.length === 0 && profile.allergies.length === 0 && (
-                <p className="text-sm text-gray-400">No dietary restrictions set</p>
-              )}
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Notifications */}
-        <div className="px-4">
-          <SectionHeader title="Notifications" />
-          <Card className="rounded-2xl border-0 shadow-sm bg-white dark:bg-zinc-900">
-            <CardContent className="p-4">
-              <SettingRow
-                icon={Bell}
-                iconColor="bg-blue-500"
-                label="Allow Notifications"
-                desc={notifs.masterEnabled ? "Notifications are active" : "Tap to enable"}
-                right={<Switch checked={notifs.masterEnabled} onCheckedChange={toggleMaster} />}
-              />
-
-              {notifs.masterEnabled && (
-                <>
-                  <Separator className="my-1" />
-                  <SettingRow
-                    icon={Bell}
-                    iconColor="bg-orange-400"
-                    label="Meal Reminders"
-                    desc={notifs.mealReminders.enabled ? `${notifs.mealReminders.breakfast} · ${notifs.mealReminders.lunch} · ${notifs.mealReminders.dinner}` : "Off"}
-                    right={
-                      <Switch
-                        checked={notifs.mealReminders.enabled}
-                        onCheckedChange={(v) => updateNotifications({ ...notifs, mealReminders: { ...notifs.mealReminders, enabled: v } })}
-                      />
-                    }
-                  />
-                  {notifs.mealReminders.enabled && (
-                    <div className="ml-11 grid grid-cols-3 gap-2 pb-2">
-                      {["breakfast", "lunch", "dinner"].map((meal) => (
-                        <div key={meal}>
-                          <p className="text-[10px] text-gray-400 capitalize mb-1">{meal}</p>
-                          <Input
-                            type="time"
-                            value={notifs.mealReminders[meal as "breakfast" | "lunch" | "dinner"]}
-                            onChange={(e) => updateNotifications({ ...notifs, mealReminders: { ...notifs.mealReminders, [meal]: e.target.value } })}
-                            className="h-8 text-xs"
-                          />
-                        </div>
-                      ))}
-                    </div>
-                  )}
-
-                  <Separator className="my-1" />
-                  <SettingRow
-                    icon={Droplets}
-                    iconColor="bg-cyan-500"
-                    label="Hydration Alerts"
-                    desc={notifs.hydrationAlerts.enabled ? `Every ${notifs.hydrationAlerts.intervalHours}h` : "Off"}
-                    right={
-                      <Switch
-                        checked={notifs.hydrationAlerts.enabled}
-                        onCheckedChange={(v) => updateNotifications({ ...notifs, hydrationAlerts: { ...notifs.hydrationAlerts, enabled: v } })}
-                      />
-                    }
-                  />
-
-                  <Separator className="my-1" />
-                  <SettingRow
-                    icon={Dumbbell}
-                    iconColor="bg-purple-500"
-                    label="Workout Reminders"
-                    desc={notifs.workoutReminders.enabled ? `${notifs.workoutReminders.days.join(", ")} at ${notifs.workoutReminders.time}` : "Off"}
-                    right={
-                      <Switch
-                        checked={notifs.workoutReminders.enabled}
-                        onCheckedChange={(v) => updateNotifications({ ...notifs, workoutReminders: { ...notifs.workoutReminders, enabled: v } })}
-                      />
-                    }
-                  />
-                  {notifs.workoutReminders.enabled && (
-                    <div className="ml-11 pb-2 space-y-2">
-                      <div className="flex flex-wrap gap-1.5">
-                        {DAYS.map((d) => (
-                          <button
-                            key={d}
-                            onClick={() => {
-                              const days = notifs.workoutReminders.days.includes(d)
-                                ? notifs.workoutReminders.days.filter((x) => x !== d)
-                                : [...notifs.workoutReminders.days, d];
-                              updateNotifications({ ...notifs, workoutReminders: { ...notifs.workoutReminders, days } });
-                            }}
-                            className={`text-xs px-2.5 py-1 rounded-full border transition-all ${
-                              notifs.workoutReminders.days.includes(d)
-                                ? "bg-purple-500 text-white border-purple-500"
-                                : "border-gray-200 dark:border-zinc-700 text-gray-500 dark:text-gray-400"
-                            }`}
-                          >
-                            {d}
-                          </button>
-                        ))}
-                      </div>
-                      <Input
-                        type="time"
-                        value={notifs.workoutReminders.time}
-                        onChange={(e) => updateNotifications({ ...notifs, workoutReminders: { ...notifs.workoutReminders, time: e.target.value } })}
-                        className="h-8 text-xs w-32"
-                      />
-                    </div>
-                  )}
-
-                  <Separator className="my-1" />
-                  <SettingRow
-                    icon={Lightbulb}
-                    iconColor="bg-yellow-500"
-                    label="Daily Coaching Tips"
-                    desc="Personalized advice from your AI coach"
-                    right={
-                      <Switch
-                        checked={notifs.coachingTips.enabled}
-                        onCheckedChange={(v) => updateNotifications({ ...notifs, coachingTips: { enabled: v } })}
-                      />
-                    }
-                  />
-                </>
-              )}
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Appearance */}
-        <div className="px-4">
-          <SectionHeader title="Appearance" />
-          <Card className="rounded-2xl border-0 shadow-sm bg-white dark:bg-zinc-900">
-            <CardContent className="p-4">
-              <SettingRow
-                icon={Moon}
-                iconColor="bg-indigo-500"
-                label="Dark Mode"
-                desc={darkMode ? "Dark theme active" : "Light theme active"}
-                right={<Switch checked={darkMode} onCheckedChange={toggleDarkMode} />}
-              />
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* About */}
-        <div className="px-4">
-          <SectionHeader title="About" />
-          <Card className="rounded-2xl border-0 shadow-sm bg-white dark:bg-zinc-900">
-            <CardContent className="p-4">
-              <SettingRow icon={Info} iconColor="bg-gray-400" label="CedricCoach" desc="Version 1.0 · Powered by Claude AI" />
-              <Separator className="my-1" />
-              <SettingRow
-                icon={User}
-                iconColor="bg-blue-400"
-                label="Masse neu eintragen"
-                desc="Zurück zur Umfrage — Daten bleiben erhalten"
-                onClick={() => {
-                  if (confirm("Möchtest du deine Masse neu eintragen?")) {
-                    const stored = localStorage.getItem("nc_profile");
-                    if (stored) {
-                      const p = JSON.parse(stored);
-                      localStorage.setItem("nc_profile", JSON.stringify({ ...p, setupComplete: false }));
-                    }
-                    window.location.reload();
-                  }
-                }}
-              />
-            </CardContent>
-          </Card>
-        </div>
+        <p className="text-center text-xs text-gray-300 dark:text-zinc-600 mt-8">
+          Made with ♥ · CedricCoach 2025
+        </p>
       </div>
     </div>
   );

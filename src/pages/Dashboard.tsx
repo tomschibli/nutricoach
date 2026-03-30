@@ -234,7 +234,7 @@ export default function Dashboard() {
                 <div className="w-6 h-6 rounded-full bg-white/20 flex items-center justify-center">
                   <Zap className="h-3.5 w-3.5 text-white" />
                 </div>
-                <span className="text-xs font-semibold text-white/70 uppercase tracking-wide">NutriCoach AI</span>
+                <span className="text-xs font-semibold text-white/70 uppercase tracking-wide">CedricCoach AI</span>
               </div>
               <ChevronRight className="h-4 w-4 text-white/60" />
             </div>

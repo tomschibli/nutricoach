@@ -28,13 +28,13 @@ function buildSystemPrompt(
   mealCount: number
 ): string {
   if (!profile) {
-    return "You are NutriCoach, a premium AI nutrition and fitness coach. Be encouraging, specific, and actionable. Use emojis warmly.";
+    return "You are CedricCoach, a premium AI nutrition and fitness coach. Be encouraging, specific, and actionable. Use emojis warmly.";
   }
   const goalLabels: Record<string, string> = {
     lose_weight: "lose weight", maintain: "maintain weight",
     gain_muscle: "build muscle", improve_health: "improve health",
   };
-  return `You are NutriCoach, a premium AI nutrition and fitness coach for ${profile.name}.
+  return `You are CedricCoach, a premium AI nutrition and fitness coach for ${profile.name}.
 
 Profile: ${profile.age}y · ${profile.weight}kg · ${profile.height}cm · ${profile.sex}
 Goal: ${goalLabels[profile.goal] ?? profile.goal}
@@ -59,8 +59,8 @@ export default function Coach() {
       id: "welcome",
       role: "assistant",
       content: profile
-        ? `Hey ${profile.name}! 👋 I'm your NutriCoach AI. I know you want to ${profile.goal.replace(/_/g, " ")} and I'm here every step of the way. What can I help with today?`
-        : "Hi! I'm your NutriCoach AI. I'm here to help with nutrition, fitness, and reaching your health goals. What's on your mind?",
+        ? `Hey ${profile.name}! 👋 I'm your CedricCoach AI. I know you want to ${profile.goal.replace(/_/g, " ")} and I'm here every step of the way. What can I help with today?`
+        : "Hi! I'm your CedricCoach AI. I'm here to help with nutrition, fitness, and reaching your health goals. What's on your mind?",
     },
   ]);
   const [input, setInput] = useState("");
@@ -163,7 +163,7 @@ export default function Coach() {
             <Sparkles className="h-5 w-5 text-white" />
           </div>
           <div>
-            <h1 className="text-base font-bold text-gray-900 dark:text-white">NutriCoach AI</h1>
+            <h1 className="text-base font-bold text-gray-900 dark:text-white">CedricCoach AI</h1>
             <p className="text-xs text-emerald-500 font-medium">● Online · Claude</p>
           </div>
         </div>

@@ -51,7 +51,11 @@ export default function Onboarding() {
 
   const canNext = () => {
     if (step === 1) return !!draft.name?.trim();
-    if (step === 2) return !!(draft.age && draft.weight && draft.height);
+    if (step === 2) return !!(
+      draft.age && draft.age >= 16 && draft.age <= 90 &&
+      draft.weight && draft.weight >= 40 && draft.weight <= 150 &&
+      draft.height && draft.height >= 130 && draft.height <= 210
+    );
     if (step === 3) return !!draft.goal;
     if (step === 4) return !!draft.activityLevel;
     return true;
@@ -97,7 +101,7 @@ export default function Onboarding() {
               <div className="w-20 h-20 rounded-3xl bg-gradient-to-br from-emerald-400 to-teal-600 flex items-center justify-center mx-auto mb-4 shadow-lg shadow-emerald-500/30">
                 <Zap className="h-10 w-10 text-white" />
               </div>
-              <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Welcome to NutriCoach</h1>
+              <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Welcome to CedricCoach</h1>
               <p className="text-gray-500 dark:text-gray-400 mt-2">Your AI-powered nutrition & fitness companion</p>
             </div>
             <div className="space-y-2">
@@ -139,16 +143,18 @@ export default function Onboarding() {
               </div>
             </div>
             {[
-              { key: "age", label: "Age", placeholder: "e.g. 28", unit: "years" },
-              { key: "weight", label: "Weight", placeholder: "e.g. 70", unit: "kg" },
-              { key: "height", label: "Height", placeholder: "e.g. 170", unit: "cm" },
-            ].map(({ key, label, placeholder, unit }) => (
+              { key: "age", label: "Alter", placeholder: "16–90", unit: "Jahre", min: 16, max: 90 },
+              { key: "weight", label: "Gewicht", placeholder: "40–150", unit: "kg", min: 40, max: 150 },
+              { key: "height", label: "Grösse", placeholder: "130–210", unit: "cm", min: 130, max: 210 },
+            ].map(({ key, label, placeholder, unit, min, max }) => (
               <div key={key} className="space-y-1.5">
                 <label className="text-sm font-medium text-gray-700 dark:text-gray-300">{label}</label>
                 <div className="flex gap-2 items-center">
                   <Input
                     type="number"
                     placeholder={placeholder}
+                    min={min}
+                    max={max}
                     value={(draft as Record<string, unknown>)[key] as string ?? ""}
                     onChange={(e) => set(key as keyof UserProfile, Number(e.target.value) as UserProfile[keyof UserProfile])}
                     className="h-11 flex-1"

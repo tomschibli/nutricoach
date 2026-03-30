@@ -102,7 +102,7 @@ app.post('/api/chat', async (req, res) => {
   res.setHeader('Connection', 'keep-alive');
   res.flushHeaders();
 
-  const systemPrompt = system || `You are NutriCoach, a premium AI nutrition and fitness coach. You provide personalized, evidence-based advice to help users achieve their health goals. Be encouraging, specific, and actionable. Keep responses concise and warm. Use emojis appropriately.`;
+  const systemPrompt = system || `You are CedricCoach, a premium AI nutrition and fitness coach. You provide personalized, evidence-based advice to help users achieve their health goals. Be encouraging, specific, and actionable. Keep responses concise and warm. Use emojis appropriately.`;
 
   try {
     const stream = anthropic.messages.stream({
@@ -136,6 +136,6 @@ app.post('/api/chat', async (req, res) => {
 app.get('/health', (_, res) => res.json({ status: 'ok', model: 'claude-opus-4-6' }));
 
 app.listen(PORT, () => {
-  console.log(`🥗 NutriCoach API running on http://localhost:${PORT}`);
+  console.log(`🥗 CedricCoach API running on http://localhost:${PORT}`);
   console.log(`   API key: ${process.env.ANTHROPIC_API_KEY ? '✓ set' : '✗ missing'}`);
 });

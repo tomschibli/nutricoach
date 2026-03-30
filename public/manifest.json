@@ -1,6 +1,6 @@
 {
-  "name": "NutriCoach AI",
-  "short_name": "NutriCoach",
+  "name": "CedricCoach AI",
+  "short_name": "CedricCoach",
   "description": "Your premium AI nutrition and fitness coach",
   "start_url": "/",
   "display": "standalone",

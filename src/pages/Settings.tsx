@@ -372,16 +372,20 @@ export default function Settings() {
           <SectionHeader title="About" />
           <Card className="rounded-2xl border-0 shadow-sm bg-white dark:bg-zinc-900">
             <CardContent className="p-4">
-              <SettingRow icon={Info} iconColor="bg-gray-400" label="NutriCoach" desc="Version 1.0 · Powered by Claude AI" />
+              <SettingRow icon={Info} iconColor="bg-gray-400" label="CedricCoach" desc="Version 1.0 · Powered by Claude AI" />
               <Separator className="my-1" />
               <SettingRow
                 icon={User}
-                iconColor="bg-red-400"
-                label="Reset Profile"
-                desc="Clear all data and start over"
+                iconColor="bg-blue-400"
+                label="Masse neu eintragen"
+                desc="Zurück zur Umfrage — Daten bleiben erhalten"
                 onClick={() => {
-                  if (confirm("This will delete all your data. Are you sure?")) {
-                    localStorage.clear();
+                  if (confirm("Möchtest du deine Masse neu eintragen?")) {
+                    const stored = localStorage.getItem("nc_profile");
+                    if (stored) {
+                      const p = JSON.parse(stored);
+                      localStorage.setItem("nc_profile", JSON.stringify({ ...p, setupComplete: false }));
+                    }
                     window.location.reload();
                   }
                 }}

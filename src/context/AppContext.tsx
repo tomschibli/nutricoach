@@ -19,8 +19,11 @@ interface AppContextType {
   notificationSettings: NotificationSettings;
   chatHistory: ChatMessage[];
   darkMode: boolean;
+  isPro: boolean;
+  dailyMessageCount: number;
   updateProfile: (p: UserProfile) => void;
   addMealEntry: (entry: MealEntry) => void;
+  removeMealEntry: (mealId: string) => void;
   updateWater: (date: string, delta: number) => void;
   getTodayLog: () => DailyLog;
   getLog: (date: string) => DailyLog;
@@ -28,6 +31,8 @@ interface AppContextType {
   addChatMessage: (m: ChatMessage) => void;
   clearChat: () => void;
   toggleDarkMode: () => void;
+  upgradeToPro: () => void;
+  incrementMessageCount: () => void;
 }
 
 const defaultNotifications: NotificationSettings = {
@@ -64,12 +69,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [notificationSettings, setNotifications] = useLocalStorage<NotificationSettings>("nc_notifs", defaultNotifications);
   const [chatHistory, setChatHistory] = useLocalStorage<ChatMessage[]>("nc_chat", []);
   const [darkMode, setDarkMode] = useLocalStorage<boolean>("nc_dark", false);
+  const [isPro, setIsPro] = useLocalStorage<boolean>("nc_pro", false);
+  const [msgData, setMsgData] = useLocalStorage<{ date: string; count: number }>("nc_msgs", { date: "", count: 0 });
+
+  const today = () => new Date().toISOString().split("T")[0];
+
+  // Reset message count daily
+  const dailyMessageCount = msgData.date === today() ? msgData.count : 0;
 
   useEffect(() => {
     document.documentElement.classList.toggle("dark", darkMode);
   }, [darkMode]);
-
-  const today = () => new Date().toISOString().split("T")[0];
 
   const getLog = (date: string): DailyLog =>
     logs.find((l) => l.date === date) ?? { date, meals: [], waterIntake: 0 };
@@ -89,6 +99,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
     });
   };
 
+  const removeMealEntry = (mealId: string) => {
+    const d = today();
+    setLogs((prev) =>
+      prev.map((l) =>
+        l.date === d ? { ...l, meals: l.meals.filter((m) => m.id !== mealId) } : l
+      )
+    );
+  };
+
   const updateWater = (date: string, delta: number) => {
     setLogs((prev) => {
       const existing = prev.find((l) => l.date === date);
@@ -103,6 +122,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
     });
   };
 
+  const incrementMessageCount = () => {
+    const d = today();
+    setMsgData({ date: d, count: (msgData.date === d ? msgData.count : 0) + 1 });
+  };
+
   return (
     <AppContext.Provider
       value={{
@@ -111,8 +135,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
         notificationSettings,
         chatHistory,
         darkMode,
+        isPro,
+        dailyMessageCount,
         updateProfile: setProfile,
         addMealEntry,
+        removeMealEntry,
         updateWater,
         getTodayLog,
         getLog,
@@ -120,6 +147,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
         addChatMessage: (m) => setChatHistory((p) => [...p, m]),
         clearChat: () => setChatHistory([]),
         toggleDarkMode: () => setDarkMode(!darkMode),
+        upgradeToPro: () => setIsPro(true),
+        incrementMessageCount,
       }}
     >
       {children}
@@ -133,7 +162,6 @@ export function useApp() {
   return ctx;
 }
 
-// Calorie / macro helpers
 export function calcDailyCalories(p: Partial<UserProfile>): number {
   const {
     sex = "other",

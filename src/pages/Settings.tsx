@@ -6,10 +6,11 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import {
-  Bell, Moon, User, Target, Droplets, Dumbbell, Lightbulb, Info, ChevronRight, Edit2, Check
+  Bell, Moon, User, Droplets, Dumbbell, Lightbulb, Info, ChevronRight, Edit2, Check, Sparkles, Crown
 } from "lucide-react";
 import { useApp, calcDailyCalories, calcMacroGoals } from "@/context/AppContext";
 import { toast } from "sonner";
+import { ProGate } from "@/components/ProGate";
 
 const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
@@ -55,9 +56,10 @@ function SettingRow({
 }
 
 export default function Settings() {
-  const { profile, updateProfile, notificationSettings, updateNotifications, darkMode, toggleDarkMode } = useApp();
+  const { profile, updateProfile, notificationSettings, updateNotifications, darkMode, toggleDarkMode, isPro } = useApp();
   const [editingGoal, setEditingGoal] = useState(false);
   const [calorieInput, setCalorieInput] = useState(profile?.dailyCalorieGoal?.toString() ?? "");
+  const [showProGate, setShowProGate] = useState(false);
 
   if (!profile) return null;
 
@@ -107,11 +109,44 @@ export default function Settings() {
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-zinc-950 pb-28">
+      {showProGate && <ProGate feature="Pro" description="Schalte alle Features frei." onClose={() => setShowProGate(false)} />}
       <div className="max-w-[430px] mx-auto">
         {/* Header */}
         <div className="px-4 pt-12 pb-4">
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Settings</h1>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Einstellungen</h1>
         </div>
+
+        {/* Pro Banner */}
+        {!isPro && (
+          <div className="px-4 mb-2">
+            <button
+              onClick={() => setShowProGate(true)}
+              className="w-full rounded-2xl bg-gradient-to-r from-violet-500 to-purple-600 p-4 flex items-center gap-3 shadow-lg shadow-violet-500/20 transition-all active:scale-[0.98]"
+            >
+              <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center shrink-0">
+                <Crown className="h-5 w-5 text-white" />
+              </div>
+              <div className="flex-1 text-left">
+                <p className="text-sm font-bold text-white">CedricCoach Pro</p>
+                <p className="text-xs text-white/70">Alle Features · CHF 9.99 einmalig</p>
+              </div>
+              <ChevronRight className="h-4 w-4 text-white/60 shrink-0" />
+            </button>
+          </div>
+        )}
+        {isPro && (
+          <div className="px-4 mb-2">
+            <div className="w-full rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-600 p-4 flex items-center gap-3 shadow-lg shadow-emerald-500/20">
+              <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center shrink-0">
+                <Sparkles className="h-5 w-5 text-white" />
+              </div>
+              <div>
+                <p className="text-sm font-bold text-white">Pro aktiv ✓</p>
+                <p className="text-xs text-white/70">Alle Features freigeschaltet</p>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Profile Card */}
         <div className="px-4">

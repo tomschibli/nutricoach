@@ -2,8 +2,9 @@ import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Send, Loader2, RotateCcw, Sparkles, Zap } from "lucide-react";
+import { Send, Loader2, RotateCcw, Sparkles, Zap, Lock } from "lucide-react";
 import { useApp } from "@/context/AppContext";
+import { ProGate, FREE_LIMIT } from "@/components/ProGate";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3001";
 
@@ -50,9 +51,11 @@ Be warm, personalized, and actionable. Keep responses concise (2–4 paragraphs)
 }
 
 export default function Coach() {
-  const { profile, getTodayLog } = useApp();
+  const { profile, getTodayLog, isPro, dailyMessageCount, incrementMessageCount } = useApp();
   const log = getTodayLog();
   const todayCals = log.meals.reduce((s, m) => s + m.analysis.nutrition.calories, 0);
+  const [showProGate, setShowProGate] = useState(false);
+  const limitReached = !isPro && dailyMessageCount >= FREE_LIMIT;
 
   const [messages, setMessages] = useState<Message[]>([
     {
@@ -77,6 +80,11 @@ export default function Coach() {
   const send = async (text: string) => {
     const t = text.trim();
     if (!t || streaming) return;
+    if (!isPro && dailyMessageCount >= FREE_LIMIT) {
+      setShowProGate(true);
+      return;
+    }
+    incrementMessageCount();
 
     const userMsg: Message = { id: crypto.randomUUID(), role: "user", content: t };
     const history = [...messages, userMsg];
@@ -156,6 +164,13 @@ export default function Coach() {
 
   return (
     <div className="flex flex-col h-screen bg-gray-50 dark:bg-zinc-950 max-w-[430px] mx-auto">
+      {showProGate && (
+        <ProGate
+          feature="KI-Chat"
+          description="Du hast dein tägliches Limit erreicht. Upgrade auf Pro für unbegrenzte Nachrichten."
+          onClose={() => setShowProGate(false)}
+        />
+      )}
       {/* Header */}
       <div className="flex-none px-4 pt-12 pb-3 flex items-center justify-between bg-white dark:bg-zinc-900 border-b border-gray-100 dark:border-zinc-800">
         <div className="flex items-center gap-3">
@@ -167,14 +182,21 @@ export default function Coach() {
             <p className="text-xs text-emerald-500 font-medium">● Online · Claude</p>
           </div>
         </div>
-        {messages.length > 1 && (
-          <button
-            onClick={reset}
-            className="flex items-center gap-1.5 text-xs text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
-          >
-            <RotateCcw className="h-3.5 w-3.5" /> New chat
-          </button>
-        )}
+        <div className="flex items-center gap-2">
+          {!isPro && (
+            <button
+              onClick={() => setShowProGate(true)}
+              className="flex items-center gap-1 text-xs font-semibold text-violet-600 bg-violet-50 dark:bg-violet-900/20 px-2.5 py-1 rounded-full"
+            >
+              <Lock className="h-3 w-3" /> {FREE_LIMIT - dailyMessageCount > 0 ? `${FREE_LIMIT - dailyMessageCount} übrig` : "Limit"}
+            </button>
+          )}
+          {messages.length > 1 && (
+            <button onClick={reset} className="flex items-center gap-1.5 text-xs text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
+              <RotateCcw className="h-3.5 w-3.5" /> Neu
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Messages */}
@@ -231,27 +253,36 @@ export default function Coach() {
 
       {/* Input bar */}
       <div className="flex-none bg-white dark:bg-zinc-900 border-t border-gray-100 dark:border-zinc-800 px-4 py-3 pb-24">
-        <div className="flex gap-2 items-end">
-          <Textarea
-            ref={textareaRef}
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(input); }
-            }}
-            placeholder="Ask your coach anything…"
-            className="resize-none min-h-[44px] max-h-28 flex-1 text-sm rounded-2xl border-gray-200 dark:border-zinc-700 bg-gray-50 dark:bg-zinc-800 focus-visible:ring-violet-500"
-            rows={1}
-            disabled={streaming}
-          />
-          <Button
-            onClick={() => send(input)}
-            disabled={!input.trim() || streaming}
-            className="h-10 w-10 p-0 rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 hover:from-violet-600 hover:to-purple-700 shrink-0 shadow-md shadow-violet-500/30"
+        {limitReached ? (
+          <button
+            onClick={() => setShowProGate(true)}
+            className="w-full h-12 rounded-2xl bg-gradient-to-r from-violet-500 to-purple-600 text-white text-sm font-bold flex items-center justify-center gap-2 shadow-lg shadow-violet-500/25 transition-all active:scale-95"
           >
-            {streaming ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-          </Button>
-        </div>
+            <Lock className="h-4 w-4" /> Pro freischalten — CHF 9.99
+          </button>
+        ) : (
+          <div className="flex gap-2 items-end">
+            <Textarea
+              ref={textareaRef}
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(input); }
+              }}
+              placeholder="Frag deinen Coach…"
+              className="resize-none min-h-[44px] max-h-28 flex-1 text-sm rounded-2xl border-gray-200 dark:border-zinc-700 bg-gray-50 dark:bg-zinc-800 focus-visible:ring-violet-500"
+              rows={1}
+              disabled={streaming}
+            />
+            <Button
+              onClick={() => send(input)}
+              disabled={!input.trim() || streaming}
+              className="h-10 w-10 p-0 rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 hover:from-violet-600 hover:to-purple-700 shrink-0 shadow-md shadow-violet-500/30 transition-all active:scale-95"
+            >
+              {streaming ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+            </Button>
+          </div>
+        )}
       </div>
     </div>
   );

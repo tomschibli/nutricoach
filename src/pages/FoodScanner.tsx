@@ -5,10 +5,11 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
-import { Camera, Upload, Loader2, Zap, AlertTriangle, Check, X } from "lucide-react";
+import { Camera, Upload, Loader2, Zap, AlertTriangle, Check, X, Lock, Sparkles } from "lucide-react";
 import { useApp } from "@/context/AppContext";
 import type { FoodAnalysis, MealEntry } from "@/types";
 import { toast } from "sonner";
+import { ProGate } from "@/components/ProGate";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3001";
 
@@ -26,8 +27,35 @@ function healthScoreLabel(score: number) {
 }
 
 export default function FoodScanner() {
-  const { addMealEntry, profile } = useApp();
+  const { addMealEntry, profile, isPro } = useApp();
   const navigate = useNavigate();
+  const [showProGate, setShowProGate] = useState(false);
+
+  if (!isPro) {
+    return (
+      <div className="min-h-screen bg-gray-50 dark:bg-zinc-950 flex flex-col items-center justify-center px-6 max-w-[430px] mx-auto">
+        {showProGate && (
+          <ProGate
+            feature="Food Scanner"
+            description="Scanne Mahlzeiten mit KI-Analyse — nur mit CedricCoach Pro."
+            onClose={() => setShowProGate(false)}
+          />
+        )}
+        <div className="w-20 h-20 rounded-3xl bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center mb-6 shadow-xl shadow-violet-500/30">
+          <Lock className="h-9 w-9 text-white" />
+        </div>
+        <h2 className="text-2xl font-bold text-gray-900 dark:text-white text-center mb-2">Food Scanner</h2>
+        <p className="text-gray-500 text-sm text-center mb-8">Analysiere deine Mahlzeiten mit KI. Nährwerte, Kalorien und Gesundheitsscore — automatisch erkannt.</p>
+        <button
+          onClick={() => setShowProGate(true)}
+          className="w-full h-14 rounded-2xl bg-gradient-to-r from-violet-500 to-purple-600 text-white font-bold flex items-center justify-center gap-2 shadow-lg shadow-violet-500/30 transition-all active:scale-95"
+        >
+          <Sparkles className="h-5 w-5" /> Pro freischalten — CHF 9.99
+        </button>
+        <p className="text-xs text-gray-400 mt-3">Einmalige Zahlung · Kein Abo</p>
+      </div>
+    );
+  }
 
   const [preview, setPreview] = useState<string | null>(null);
   const [imageData, setImageData] = useState<{ base64: string; mimeType: string } | null>(null);

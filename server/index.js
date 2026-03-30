@@ -91,6 +91,56 @@ If no food is visible, return: {"error": "No food detected", "foodName": null}`,
   }
 });
 
+// ─── Manual Food Estimation ──────────────────────────────────────────────────
+
+app.post('/api/estimate-food', async (req, res) => {
+  const { foodName, grams } = req.body;
+  if (!foodName || !grams) return res.status(400).json({ error: 'foodName and grams required' });
+
+  try {
+    const response = await anthropic.messages.create({
+      model: 'claude-opus-4-6',
+      max_tokens: 512,
+      messages: [{
+        role: 'user',
+        content: `Estimate the nutrition for ${grams}g of "${foodName}". Return ONLY valid JSON, no markdown.
+
+Return exactly this structure:
+{
+  "foodName": "${foodName}",
+  "description": "brief description",
+  "servingSize": "${grams}g",
+  "servings": 1,
+  "confidence": "medium",
+  "nutrition": {
+    "calories": 0,
+    "protein": 0,
+    "carbs": 0,
+    "fat": 0,
+    "fiber": 0,
+    "sugar": 0,
+    "sodium": 0
+  },
+  "allergens": [],
+  "healthScore": 5,
+  "healthScoreReason": "brief reason",
+  "insights": ["insight 1", "insight 2"],
+  "mealType": "snack"
+}`
+      }]
+    });
+
+    const text = response.content[0]?.type === 'text' ? response.content[0].text : '';
+    const match = text.match(/\{[\s\S]*\}/);
+    if (!match) return res.status(500).json({ error: 'Could not parse response' });
+    const analysis = JSON.parse(match[0]);
+    res.json({ analysis });
+  } catch (err) {
+    console.error('Food estimation error:', err.message);
+    res.status(500).json({ error: 'Estimation failed' });
+  }
+});
+
 // ─── Streaming Chat ──────────────────────────────────────────────────────────
 
 app.post('/api/chat', async (req, res) => {

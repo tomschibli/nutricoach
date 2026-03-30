@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Sparkles, Check, X, Loader2 } from "lucide-react";
+import { Sparkles, Check, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useApp } from "@/context/AppContext";
 
@@ -13,15 +13,11 @@ const FREE_LIMIT = 3;
 
 export function ProGate({ feature, description, onClose }: ProGateProps) {
   const { upgradeToPro } = useApp();
-  const [loading, setLoading] = useState(false);
   const [done, setDone] = useState(false);
 
-  const handlePurchase = async () => {
-    setLoading(true);
-    await new Promise((r) => setTimeout(r, 1500));
-    upgradeToPro();
+  const handlePurchase = () => {
     setDone(true);
-    setLoading(false);
+    upgradeToPro();
     setTimeout(() => onClose?.(), 800);
   };
 
@@ -65,13 +61,11 @@ export function ProGate({ feature, description, onClose }: ProGateProps) {
 
         <Button
           onClick={handlePurchase}
-          disabled={loading || done}
+          disabled={done}
           className="w-full h-14 rounded-2xl text-base font-bold bg-gradient-to-r from-violet-500 to-purple-600 hover:from-violet-600 hover:to-purple-700 shadow-lg shadow-violet-500/30 transition-all duration-200 active:scale-95"
         >
           {done ? (
             <span className="flex items-center gap-2"><Check className="h-5 w-5" /> Aktiviert!</span>
-          ) : loading ? (
-            <Loader2 className="h-5 w-5 animate-spin" />
           ) : (
             "Pro kaufen — CHF 9.99 einmalig"
           )}

@@ -28,13 +28,13 @@ const DIET_OPTIONS = ["Vegetarian", "Vegan", "Gluten-Free", "Dairy-Free", "Keto"
 const ALLERGY_OPTIONS = ["Peanuts", "Tree Nuts", "Milk", "Eggs", "Wheat", "Soy", "Fish", "Shellfish", "Sesame"];
 
 export default function Onboarding() {
-  const { updateProfile } = useApp();
+  const { updateProfile, profile } = useApp();
   const [step, setStep] = useState(1);
-  const [draft, setDraft] = useState<Partial<UserProfile>>({
-    sex: "other",
-    dietaryPreferences: [],
-    allergies: [],
-  });
+  const [draft, setDraft] = useState<Partial<UserProfile>>(
+    profile
+      ? { ...profile, setupComplete: false }
+      : { sex: "other", dietaryPreferences: [], allergies: [] }
+  );
 
   const set = <K extends keyof UserProfile>(k: K, v: UserProfile[K]) =>
     setDraft((p) => ({ ...p, [k]: v }));
